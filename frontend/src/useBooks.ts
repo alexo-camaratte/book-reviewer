@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { BookDetail, BookSummary } from "./book-types"
+import { downloadWord } from "./lib/download"
 
 export async function api<T>(path: string, data?: unknown, signal?: AbortSignal): Promise<T> {
   const response = await fetch(path, { method: data === undefined ? "GET" : "POST", headers: { "Content-Type": "application/json" }, body: data === undefined ? undefined : JSON.stringify(data), signal })
@@ -137,12 +138,19 @@ export function useBooks() {
   }
 
   async function download(language: "pt-BR" | "es") {
-    const result = await action("export", { language })
-    if (result?.download_url) {
-      const anchor = document.createElement("a")
-      anchor.href = String(result.download_url); anchor.download = String(result.filename); anchor.click()
-      setNotice("Word gerado. O download foi iniciado.")
-    }
+    if (!projectId) return
+    setBusy("export"); setError(""); setNotice("")
+    try {
+      await downloadWord(detail, language,
+        () => api<{ download_url: string; filename: string }>(`/api/books/${projectId}/export`, { language }),
+        result => {
+          const anchor = document.createElement("a")
+          anchor.href = result.download_url; anchor.download = result.filename; anchor.click()
+          setNotice("O download foi iniciado.")
+        })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível baixar o Word.")
+    } finally { if (mounted.current) setBusy(null) }
   }
   return { projects, projectId, chunkId, setChunkId, showChunk, removeBook, selectProject, detail, busy, error, notice, activeProjectId, action, importBook, download, refreshList, loadDetail, retryLoading }
 }

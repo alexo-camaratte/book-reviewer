@@ -7,6 +7,7 @@ O checkout principal usa `main` e contém seus dados locais em `.books/`. As bra
 `BookWorkspace` identifica autoria por `dc:creator`, sem confundir o criador com o último editor. Exportação, detalhe de entregas e cabeçalho HTTP compartilham o nome original com sufixo ` REVISADO`; `filename*` UTF-8 conserva acentos. Os nomes internos dos arquivos e manifestos permanecem estáveis.
 
 - `frontend/src/App.tsx`: escolhe a tela pelo estado do livro (`lib/screens.ts`) e monta `AppHeader` ou `TabBar`. `screens/` implementa as telas de `design/screens/`; `components/ui/` implementa `design/components/` sobre `design/components.css`. `useBooks.ts` mantém estado HTTP e polling cancelável.
+  Downloads usam `lib/download.ts`: entrega automática da revisão atual segue direto ao endpoint de download; sem entrega atual, exporta primeiro. Nenhum caminho aguarda recarregar detalhe/lista antes de iniciar o download. A API mantém o bloqueio de artefatos desatualizados.
 - `design/`: referência de design da interface (tokens, componentes `rv-…`, telas de computador e celular, ícones e marca). É especificação, não código do app; `design/IMPLEMENTACAO.md` guia a migração.
 - `backend/revisor/server.py`: HTTP local, validação de host/origem, JSON e entrega da interface compilada. `/api/books` é a única API; não há rotas de outro formato de livro.
   Desconexão durante o envio de cabeçalhos/corpo encerra somente a requisição, sem traceback nem segunda resposta. Erros de envio sem relação com desconexão continuam visíveis.

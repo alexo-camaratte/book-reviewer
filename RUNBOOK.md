@@ -33,6 +33,8 @@ Não altere JSON durante processamento, não regenere aprovações reais durante
 
 Os downloads são novas cópias. Inserção em destino espanhol preserva o conteúdo fora das seções escolhidas. A paginação pode variar. Inserção com notas vinculadas exige exportar as seções separadamente; livro inteiro mantém notas na estrutura original.
 
+Na tela de livro pronto, baixar reutiliza o Word já gerado da revisão atual. No modo manual, a primeira exportação ainda prepara o Word; o download começa assim que ela termina, sem recarregar os dados da tela antes.
+
 Testes e instalação pública usam documentos fictícios, sem dados pessoais.
 
 ## Verificar
