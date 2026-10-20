@@ -33,10 +33,6 @@ Use as skills instaladas relevantes: vercel-react-best-practices para React; fro
 
 ## Skills compartilhadas
 
-Use as skills `gabriel-*` instaladas a partir do repositório canônico `my-skills`, carregando só a necessária: diagnóstico de issue ou bug → `gabriel-iss-audit`; implementação de correção aprovada → `gabriel-github-resolution`; planejamento de evidência → `gabriel-verification-planning`; revisão do diff final antes do push → `gabriel-pr-audit`; preparação de versão → `gabriel-release`, seguindo [RELEASES.md](RELEASES.md). Como o projeto usa só `main`, etapas de PR viram revisão do commit local antes do push. Disponibilidade não obriga a executar todas; as skills apoiam esta política e não ampliam escopo nem autoridade.
+Use as skills `gabriel-*` instaladas a partir do repositório canônico `my-skills`, carregando só a necessária: diagnóstico de issue ou bug → `gabriel-iss-audit`; implementação de correção aprovada → `gabriel-github-resolution`; revisão do diff final antes do push → `gabriel-pr-audit`; preparação de versão → `gabriel-release`, seguindo [RELEASES.md](RELEASES.md). Como o projeto usa só `main`, etapas de PR viram revisão do commit local antes do push. Disponibilidade não obriga a executar todas; as skills apoiam esta política e não ampliam escopo nem autoridade.
 
 Não copie skills compartilhadas nem crie symlinks locais duplicados. A instalação pertence ao ambiente pessoal; uma skill ausente não autoriza buscá-la ou configurá-la. Siga os procedimentos documentados e relate a limitação. Plugins continuam gerenciados por seus instaladores.
-
-## Ferramentas pessoais
-
-Siga a autorização My Tools da sessão e a referência tool-routing.md da skill gabriel-* aplicada. Busca sem localização confirmada usa Siftr primeiro; símbolos conhecidos usam rg. Checks extensos elegíveis usam o wrapper Pruner, respeitando a autorização do histórico. Smoke isolado usa Jev Browser oficial. Registre chamadas e dispensas concretas; não invente ganhos nem dependências só para acionar ferramentas.

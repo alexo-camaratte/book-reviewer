@@ -7,6 +7,10 @@ aplicativo inteiro (interface e backend). Fluxo em [RELEASES.md](RELEASES.md).
 
 ## [0.23.1] - 2026-10-16
 
+### Alterado
+
+- Instruções do agente sem a seção "Ferramentas pessoais" (Siftr, Pruner e Jev Browser foram desligados) e sem a skill `gabriel-verification-planning`, que foi fundida na `gabriel-github-resolution`.
+
 ### Corrigido
 
 - Baixar um livro pronto usa o Word já gerado da revisão atual, sem refazer a exportação. No modo manual, o download começa assim que o arquivo é gerado, sem esperar recarregar o detalhe e a lista de livros.
