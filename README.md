@@ -4,7 +4,7 @@ Aplicativo local para revisar livros em português brasileiro, validar e aplicar
 
 ## Versões
 
-A versão atual fica em [VERSION](VERSION). Veja o [changelog](CHANGELOG.md), as [releases](https://github.com/gabrielcamarate/book-reviewer/releases) e o [fluxo de versões](RELEASES.md).
+A versão atual fica em [VERSION](VERSION). Veja o [changelog](CHANGELOG.md), as [releases](https://github.com/alexo-camaratte/book-reviewer/releases) e o [fluxo de versões](RELEASES.md).
 
 ## Executar
 
@@ -75,7 +75,7 @@ Os livros em `.books/` são operados pela interface e pela API local. Não regen
 ## Clonar em outra máquina
 
 ```bash
-git clone --single-branch --branch main https://github.com/gabrielcamarate/book-reviewer.git
+git clone --single-branch --branch main https://github.com/alexo-camaratte/book-reviewer.git
 cd book-reviewer
 pnpm --dir frontend install --frozen-lockfile
 ./scripts/dev.sh

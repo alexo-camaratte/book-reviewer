@@ -1,6 +1,6 @@
 # Versões e releases
 
-Modelo adaptado do Xlondz. Em 07/10/2026 Gabriel pediu releases automáticas neste projeto: depois de um push autorizado na `main` e do CI verde desse commit exato, o workflow `Publish version` cria a tag `vX.Y.Z` e a GitHub Release. Isso não autoriza push, deploy nem publicação fora deste repositório.
+Modelo adaptado do Xlondz. Em 07/10/2026 Gabriel pediu releases automáticas neste projeto: depois de um merge autorizado na `main` e do CI verde desse commit exato, o workflow `Publish version` cria a tag `vX.Y.Z` e a GitHub Release. Isso não autoriza merge, deploy nem publicação fora deste repositório.
 
 ## Fontes
 
@@ -26,7 +26,7 @@ Instruções de agentes, runbooks e `design/` são contratos: mudança exige ver
 ## Fluxo
 
 1. Durante o trabalho, escreva as mudanças em `[Unreleased]`.
-2. Antes do commit final, prepare uma única versão e valide:
+2. Antes do último commit da branch, prepare uma única versão e valide:
 
    ```bash
    python3 scripts/release_version.py cut --bump patch
@@ -34,7 +34,7 @@ Instruções de agentes, runbooks e `design/` são contratos: mudança exige ver
    ```
 
    `cut` atualiza `VERSION`, os espelhos e o changelog; não commita nem publica.
-3. O CI (`Required CI`) valida fontes consistentes, notas não vazias, histórico preservado e um único incremento sobre a base.
-4. Após o push autorizado e o CI verde, confira a release em https://github.com/gabrielcamarate/book-reviewer/releases. Falha de publicação é pendência, não sucesso; reconcilie tag e release antes de repetir.
+3. Abra o PR para a `main`. O CI (`Required CI`) valida fontes consistentes, notas não vazias, histórico preservado e um único incremento sobre a base; o ruleset da `main` exige esse check verde.
+4. Após o merge autorizado (squash) e o CI verde na `main`, confira a release em https://github.com/alexo-camaratte/book-reviewer/releases. Falha de publicação é pendência, não sucesso; reconcilie tag e release antes de repetir.
 
 `scripts/verify-release-workflow.py` fixa o hash do `release.yml` revisado; alterá-lo exige revisão e atualização do hash.

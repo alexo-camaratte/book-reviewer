@@ -1,6 +1,6 @@
 # Estado do produto
 
-Fluxo Git: apenas `main` e o checkout principal. Backups recuperáveis preservam o histórico das branches e arquivos locais removidos de worktrees auxiliares. A documentação de distribuição e os registros privados de operação têm finalidades separadas.
+Fluxo Git: `main` e o checkout principal; cada mudança passa por uma branch curta e um PR com `Required CI` verde, e a branch é apagada no merge. Sem `staging` neste projeto. Backups recuperáveis preservam o histórico das branches e arquivos locais removidos de worktrees auxiliares. A documentação de distribuição e os registros privados de operação têm finalidades separadas.
 
 Implementado: importação Word, escopo integral ou por seções, revisão conservadora pt-BR, aprovação manual ou automática após validação, tradução es-419, revisão bilíngue, glossário, retomada e exportação.
 
