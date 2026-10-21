@@ -5,6 +5,12 @@ aplicativo inteiro (interface e backend). Fluxo em [RELEASES.md](RELEASES.md).
 
 ## [Unreleased]
 
+## [0.23.3] - 2026-10-21
+
+### Corrigido
+
+- Publica a release que a 0.23.2 não teve: o merge dela na `main` não gerou o run de CI do push, então o workflow de publicação não rodou e a 0.23.2 ficou sem tag nem GitHub Release. O código da 0.23.2 está incluído nesta versão.
+
 ## [0.23.2] - 2026-10-21
 
 ### Alterado
