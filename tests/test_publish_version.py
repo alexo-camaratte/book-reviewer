@@ -10,7 +10,7 @@ SCRIPTS = Path(__file__).resolve().parent.parent / 'scripts'
 sys.path.insert(0, str(SCRIPTS))
 from publish_version import ApiError, publish  # noqa: E402
 
-REPO = 'gabrielcamarate/book-reviewer'
+REPO = 'alexo-camaratte/book-reviewer'
 
 
 class PublishTests(unittest.TestCase):

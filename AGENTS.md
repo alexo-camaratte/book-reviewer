@@ -16,14 +16,14 @@ Jev fornece julgamentos, não gera traduções. Avaliação de qualidade e limia
 
 ## Desenvolvimento
 
-- Neste projeto, mantenha somente `main` e o checkout principal, conforme pedido do usuário. Não deixe branches ou worktrees auxiliares após concluir tarefas. Preserve processos ativos e trabalho desconhecido; não faça reset/stash/clean indiscriminado.
+- Neste projeto não há `staging`: a única branch permanente é `main`. A `main` só recebe mudança por PR com o check `Required CI` verde (ruleset do enterprise Camarate Tech e do repo); use uma branch curta a partir de `origin/main`, faça squash no merge e remova branch e worktree ao concluir. Preserve processos ativos e trabalho desconhecido; não faça reset/stash/clean indiscriminado.
 - Planeje mudanças estruturais e registre evidências em REFACTOR.md quando pertinente.
 - Para comportamento novo/corrigido, escreva primeiro a prova de regressão; mantenha testes do núcleo. Testes de funcionalidades explicitamente aposentadas podem ser removidos junto com elas.
 - Use scripts/jail.sh quando viável para validação isolada. Não copie credenciais para containers.
 - Gates: scripts/ci.sh e Bandit no backend. UI deve ter smoke isolado e inspeção visual proporcionais.
 - README, arquitetura, operação, tarefas e changelog devem refletir a mesma revisão.
 - Commits Conventional Commits após verificação; push, merge, deploy e publicação só com autorização específica.
-- Toda mudança de comportamento, configuração, tooling, contrato ou `design/` prepara uma versão e a nota no CHANGELOG no mesmo commit, conforme [RELEASES.md](RELEASES.md). A publicação da tag e da release após CI verde na `main` é automática e foi autorizada em 07/10/2026; ela não autoriza push. Confira a release antes de relatar conclusão.
+- Toda mudança de comportamento, configuração, tooling, contrato ou `design/` prepara uma versão e a nota no CHANGELOG no mesmo commit, conforme [RELEASES.md](RELEASES.md). A publicação da tag e da release após CI verde na `main` é automática e foi autorizada em 07/10/2026; ela não autoriza merge. Confira a release antes de relatar conclusão.
 
 ## Frontend
 
@@ -33,6 +33,6 @@ Use as skills instaladas relevantes: vercel-react-best-practices para React; fro
 
 ## Skills compartilhadas
 
-Use as skills `gabriel-*` instaladas a partir do repositório canônico `my-skills`, carregando só a necessária: diagnóstico de issue ou bug → `gabriel-iss-audit`; implementação de correção aprovada → `gabriel-github-resolution`; revisão do diff final antes do push → `gabriel-pr-audit`; preparação de versão → `gabriel-release`, seguindo [RELEASES.md](RELEASES.md). Como o projeto usa só `main`, etapas de PR viram revisão do commit local antes do push. Disponibilidade não obriga a executar todas; as skills apoiam esta política e não ampliam escopo nem autoridade.
+Use as skills `gabriel-*` instaladas a partir do repositório canônico `my-skills`, carregando só a necessária: diagnóstico de issue ou bug → `gabriel-iss-audit`; implementação de correção aprovada → `gabriel-github-resolution`; revisão do PR antes do merge → `gabriel-pr-audit`; preparação de versão → `gabriel-release`, seguindo [RELEASES.md](RELEASES.md). Como o projeto não tem `staging`, etapas que falam em `staging` partem e entregam direto na `main`, sempre por PR. Disponibilidade não obriga a executar todas; as skills apoiam esta política e não ampliam escopo nem autoridade.
 
 Não copie skills compartilhadas nem crie symlinks locais duplicados. A instalação pertence ao ambiente pessoal; uma skill ausente não autoriza buscá-la ou configurá-la. Siga os procedimentos documentados e relate a limitação. Plugins continuam gerenciados por seus instaladores.

@@ -5,6 +5,13 @@ aplicativo inteiro (interface e backend). Fluxo em [RELEASES.md](RELEASES.md).
 
 ## [Unreleased]
 
+## [0.23.2] - 2026-10-21
+
+### Alterado
+
+- O repositório mudou para `alexo-camaratte/book-reviewer`; README, fluxo de versões e teste de publicação usam o endereço novo.
+- A `main` passa a receber mudanças só por PR com `Required CI` verde (squash, branch apagada no merge). Instruções do agente, tarefas e fluxo de versões descrevem esse fluxo; o projeto continua sem `staging`.
+
 ## [0.23.1] - 2026-10-16
 
 ### Alterado
