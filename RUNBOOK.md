@@ -43,4 +43,4 @@ Testes e instalação pública usam documentos fictícios, sem dados pessoais.
 ./scripts/fast-check.sh
 ```
 
-`fast-check.sh` (o mesmo do CI; `ci.sh` é atalho) verifica Python, testes unitários/HTTP, lint e build. Fora do CI, limita os workers de teste a 2 (`SHARE_WORKERS`) e espera o lock `~/.cache/gabriel-heavy.lock` antes do build, para não disputar a máquina com outros projetos. Bandit complementa os gates. CI não publica nem processa manuscritos reais.
+`fast-check.sh` (o mesmo do CI; `ci.sh` é atalho) verifica Python, testes unitários/HTTP, lint e build. Fora do CI, limita os workers de teste a 2 (`SHARE_WORKERS`) e espera o lock `~/.cache/gabriel-heavy.lock` antes do build, para não disputar a máquina com outros projetos. Bandit e o audit de dependências complementam os gates: `python3 scripts/dependency-audit.py` (precisa de `pip-audit` no Python usado e de rede) imprime um veredito por fonte (`ok`, `vulnerable`, `unavailable`, `failed`); vulnerabilidade ou audit quebrado falha, fonte fora do ar só avisa no CI. CI não publica nem processa manuscritos reais.
