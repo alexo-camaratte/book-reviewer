@@ -1,6 +1,8 @@
 """Project-standard contracts: fast-check entry point, machine sharing and CI wiring."""
 from pathlib import Path
+import shutil
 import subprocess
+import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -41,6 +43,17 @@ class FastCheckTest(unittest.TestCase):
         self.assertIn('types: [opened, synchronize, reopened, edited]', workflow)
         self.assertIn("if: github.event_name == 'pull_request'\n        run: python3 scripts/check-pr-scope.py", workflow)
         self.assertTrue((ROOT / 'changes/README.md').is_file())
+
+    def test_worktrees_live_in_an_ignored_folder(self):
+        # Only the committed .gitignore counts: a personal excludesFile or .git/info/exclude must not make this pass.
+        with tempfile.TemporaryDirectory() as tmp:
+            subprocess.run(['git', 'init', '-q', '--template=', tmp], check=True, timeout=30)
+            shutil.copy(ROOT / '.gitignore', Path(tmp) / '.gitignore')
+            ignored = lambda path: subprocess.run(['git', '-c', 'core.excludesFile=/dev/null', 'check-ignore', '-q', '--no-index', path],
+                                                  cwd=tmp, timeout=30).returncode == 0
+            self.assertTrue(ignored('.claude/worktrees/fix-12/README.md'), '.claude/worktrees/ must be ignored')
+            self.assertFalse(ignored('.claude/settings.json'), 'shared agent settings stay tracked')
+        self.assertIn('.claude/worktrees/<tipo>-<N>', (ROOT / 'AGENTS.md').read_text())
 
     def test_share_machine_contract(self):
         result = subprocess.run(['bash', str(SCRIPTS / 'test-share-machine.sh')], cwd=ROOT,

@@ -16,7 +16,7 @@ Jev fornece julgamentos, não gera traduções. Avaliação de qualidade e limia
 
 ## Desenvolvimento
 
-- Neste projeto não há `staging`: a única branch permanente é `main`. A `main` só recebe mudança por PR com o check `Required CI` verde (ruleset do enterprise Camarate Tech e do repo); use uma branch curta a partir de `origin/main`, faça squash no merge e remova branch e worktree ao concluir. Preserve processos ativos e trabalho desconhecido; não faça reset/stash/clean indiscriminado.
+- Neste projeto não há `staging`: a única branch permanente é `main`. A `main` só recebe mudança por PR com o check `Required CI` verde (ruleset do enterprise Camarate Tech e do repo); use uma branch curta `<tipo>/<N>-<slug>` a partir de `origin/main`, num worktree em `.claude/worktrees/<tipo>-<N>` (ignorado pelo Git), faça squash no merge e, depois dele, `git worktree remove` (sem `--force`), `git branch -D <branch>` (o squash exige `-D`) e `git fetch --prune`. Preserve processos ativos e trabalho desconhecido; não faça reset/stash/clean indiscriminado.
 - Planeje mudanças estruturais e registre evidências em REFACTOR.md quando pertinente.
 - Para comportamento novo/corrigido, escreva primeiro a prova de regressão; mantenha testes do núcleo. Testes de funcionalidades explicitamente aposentadas podem ser removidos junto com elas.
 - Use scripts/jail.sh quando viável para validação isolada. Não copie credenciais para containers.

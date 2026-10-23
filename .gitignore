@@ -26,3 +26,6 @@ dist/
 /.agents/
 /skills-lock.json
 /TASKS-HISTORY.md
+
+# Worktrees de tarefa (.claude/worktrees/<tipo>-<N>); .claude/settings.json segue versionado
+/.claude/worktrees/
