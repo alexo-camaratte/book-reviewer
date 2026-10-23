@@ -5,6 +5,8 @@
 - O `Required CI` confere o escopo do PR: branch `<tipo>/<N>-<slug>`, `Refs #N` sem
   palavra de fechamento, uma nota da própria issue e linha `Security-Review:` quando o
   PR toca CI, scripts, instruções ou permissões de agente (#6).
+- Worktrees de tarefa ficam em `.claude/worktrees/<tipo>-<N>`, ignorados pelo Git;
+  AGENTS.md descreve a criação e a limpeza depois do merge (#6).
 
 ### Segurança
 - O `Required CI` audita dependências: `pnpm audit --prod` do frontend falha com
