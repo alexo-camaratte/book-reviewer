@@ -1,5 +1,20 @@
 name: CI
-on: [push, pull_request]
+# One run per PR: a task branch gets only the pull_request run. Push runs only on
+# main, where Publish version waits for it.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# A new push to the same PR cancels the stale run. Main runs get one group per commit,
+# so a later merge never cancels a pending run (and its release).
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   validate:
     name: Required CI

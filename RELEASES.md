@@ -34,7 +34,7 @@ Instruções de agentes, runbooks e `design/` são contratos: mudança exige ver
    ```
 
    `cut` atualiza `VERSION`, os espelhos e o changelog; não commita nem publica.
-3. Abra o PR para a `main`. O CI (`Required CI`) valida fontes consistentes, notas não vazias, histórico preservado e um único incremento sobre a base; o ruleset da `main` exige esse check verde.
+3. Abra o PR para a `main`. O CI (`Required CI`) roda uma vez por PR (branch de tarefa não dispara run de push; o push só roda na `main`, que o `Publish version` espera) e valida fontes consistentes, notas não vazias, histórico preservado e um único incremento sobre a base; o ruleset da `main` exige esse check verde.
 4. Após o merge autorizado (squash) e o CI verde na `main`, confira a release em https://github.com/alexo-camaratte/book-reviewer/releases. Falha de publicação é pendência, não sucesso; reconcilie tag e release antes de repetir.
 
 `scripts/verify-release-workflow.py` fixa o hash do `release.yml` revisado; alterá-lo exige revisão e atualização do hash.

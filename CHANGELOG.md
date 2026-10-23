@@ -5,6 +5,12 @@ aplicativo inteiro (interface e backend). Fluxo em [RELEASES.md](RELEASES.md).
 
 ## [Unreleased]
 
+## [0.23.5] - 2026-10-23
+
+### Alterado
+
+- O CI roda uma vez por PR: o evento de push só dispara na `main` (de onde o `Publish version` parte), um novo push no mesmo PR cancela o run anterior e o job declara só leitura do repositório.
+
 ## [0.23.4] - 2026-10-23
 
 ### Alterado
