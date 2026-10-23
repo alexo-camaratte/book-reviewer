@@ -13,6 +13,12 @@ HEADER = re.compile(r'^## \[(Unreleased|' + VERSION + r')\](?: - (\d{4}-\d{2}-\d
 FILES = ('VERSION', 'frontend/package.json', 'pyproject.toml', 'CHANGELOG.md')
 INITIAL = '0.2.0'
 PYPROJECT_VERSION = re.compile(r'^version = "[^"\n]*"$', re.M)
+# Task PRs add one note changes/<N>-<slug>.md and never edit CHANGELOG.md; only the
+# release cut changes VERSION, joins the notes into CHANGELOG.md and deletes them.
+NOTES_DIR = 'changes'
+NOTES_README = 'changes/README.md'
+NOTE = re.compile(r'changes/(\d+)-[a-z0-9]+(?:-[a-z0-9]+)*\.md')
+CATEGORIES = ('Adicionado', 'Alterado', 'Corrigido', 'Removido', 'Segurança')
 
 
 def git(root, *args):
@@ -78,14 +84,68 @@ def read_metadata(root, revision=None):
     return version, notes, values
 
 
+def pending_notes(root, revision=None):
+    """Note paths waiting for the next release, sorted by issue number."""
+    if revision:
+        out = git(root, 'ls-tree', '-r', '--name-only', '-z', resolve(root, revision), NOTES_DIR + '/')
+        paths = [p for p in out.split('\0') if p]
+    else:
+        folder = root / NOTES_DIR
+        paths = [f'{NOTES_DIR}/{p.relative_to(folder).as_posix()}' for p in folder.rglob('*') if not p.is_dir()] if folder.is_dir() else []
+    paths = [p for p in paths if p != NOTES_README]
+    for path in paths:
+        if not NOTE.fullmatch(path): raise ValueError('invalid note name: '+path)
+    return sorted(paths, key=lambda p: (int(NOTE.fullmatch(p)[1]), p))
+
+
+def read_note(root, path, revision=None):
+    if revision: return git(root, 'show', f'{resolve(root, revision)}:{path}')
+    if (root / path).is_symlink(): raise ValueError('note must be a regular file')
+    return (root / path).read_text()
+
+
+def parse_note(text):
+    """[(category or None, item block)] in file order. Accepts '- item', indented
+    continuation right after an item, blank lines and '### <category>'."""
+    entries, category, item = [], None, None
+    for line in text.splitlines():
+        if line.startswith('- ') and line[2:].strip():
+            item = [line.rstrip()]
+            entries.append((category, item))
+        elif line[:1] in (' ', '\t') and line.strip():
+            if item is None: raise ValueError('continuation without item')
+            item.append(line.rstrip())
+        elif not line.strip():
+            item = None
+        elif line.startswith('### ') and line[4:].strip() in CATEGORIES:
+            category, item = line[4:].strip(), None
+        else:
+            raise ValueError('invalid note line')
+    if not entries: raise ValueError('empty note')
+    return [(c, '\n'.join(lines)) for c, lines in entries]
+
+
+def join_notes(texts):
+    """Release body: uncategorized items first, then categories in fixed order."""
+    grouped = {}
+    for text in texts:
+        for category, item in parse_note(text):
+            grouped.setdefault(category, []).append(item)
+    blocks = ['\n'.join(grouped[None])] if None in grouped else []
+    blocks += [f'### {c}\n\n' + '\n'.join(grouped[c]) for c in CATEGORIES if c in grouped]
+    return '\n\n'.join(blocks)
+
+
 def prose_only(path):
     # Deliberately narrow: runtime runbooks and agent/security instructions are contracts.
     return path == 'README.md'
 
 
 def check(root, base=None, head=None):
-    version, notes, _ = read_metadata(root, head)
-    if notes['Unreleased'][1]: raise ValueError('cut Unreleased notes before final CI')
+    version, notes, values = read_metadata(root, head)
+    if notes['Unreleased'][1]: raise ValueError('Unreleased stays empty; notes live in changes/')
+    pending = pending_notes(root, head)
+    for path in pending: parse_note(read_note(root, path, head))
     if not base: return version
     base = resolve(root, base)
     if head: head = resolve(root, head)
@@ -94,22 +154,31 @@ def check(root, base=None, head=None):
     if not has_base:
         if version != INITIAL or list(notes) != ['Unreleased',INITIAL]: raise ValueError('initial baseline must be only '+INITIAL)
         return version
-    old, history, _ = read_metadata(root, base)
+    old, history, old_values = read_metadata(root, base)
     for item in list(history)[1:]:
         if notes.get(item) != history[item]: raise ValueError('historical release notes must not be rewritten')
+    changed_notes = [p for p in paths if NOTE.fullmatch(p)]
     if version == old:
-        if any(not prose_only(p) for p in paths): raise ValueError('behavior/tooling/config changes require version and notes')
+        # Task: a note in changes/, CHANGELOG.md untouched, no note consumed.
+        if values['CHANGELOG.md'] != old_values['CHANGELOG.md']: raise ValueError('task PRs do not edit CHANGELOG.md')
+        if any(p not in pending for p in changed_notes): raise ValueError('only the release cut deletes notes')
+        if any(not prose_only(p) for p in paths) and not changed_notes:
+            raise ValueError('behavior/tooling/config changes require a note in changes/')
     elif version not in {next_version(old, bump) for bump in ('patch','minor','major')}:
         raise ValueError('version must be one patch/minor/major increment from base')
     elif list(notes)[2:] != list(history)[1:]:
         raise ValueError('one candidate release per PR; preserve existing history')
+    elif pending:
+        raise ValueError('release cut must consume every note in changes/')
     return version
 
 
 def cut(root, bump):
     version, notes, values = read_metadata(root)
-    body = notes['Unreleased'][1]
-    if not re.search(r'^- \S', body, re.M): raise ValueError('write meaningful Unreleased notes first')
+    if notes['Unreleased'][1]: raise ValueError('Unreleased stays empty; notes live in changes/')
+    pending = pending_notes(root)
+    if not pending: raise ValueError('no notes in changes/ to release')
+    body = join_notes(read_note(root, path) for path in pending)
     new = next_version(version, bump)
     text = values['CHANGELOG.md']
     start = HEADER.search(text).start()
@@ -124,6 +193,7 @@ def cut(root, bump):
     except OSError:
         for name, data in values.items(): (root/name).write_text(data)
         raise
+    for path in pending: (root/path).unlink()
     return new
 
 

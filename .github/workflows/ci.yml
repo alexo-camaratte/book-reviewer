@@ -3,6 +3,8 @@ name: CI
 # main, where Publish version waits for it.
 on:
   pull_request:
+    # edited: a new body (Refs #N, Security-Review:) re-runs the scope gate.
+    types: [opened, synchronize, reopened, edited]
   push:
     branches: [main]
 
@@ -22,7 +24,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          persist-credentials: false
+          # check-pr-scope.py and release_version.py diff from the merge base with main.
           fetch-depth: 0
+      # Branch <type>/<N>-<slug>, Refs #N, one note changes/<N>-<slug>.md, Security-Review line.
+      # Reads the event file only; no PR text reaches a shell.
+      - name: PR scope
+        if: github.event_name == 'pull_request'
+        run: python3 scripts/check-pr-scope.py
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"

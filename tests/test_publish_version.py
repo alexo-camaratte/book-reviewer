@@ -170,6 +170,34 @@ class PublishTests(unittest.TestCase):
         self.assertEqual(self.tag, later)
         self.assertEqual(len(self.writes), 2)
 
+    def task_merge(self):
+        (self.root / 'backend.py').write_text('x = 1\n')
+        (self.root / 'changes').mkdir()
+        (self.root / 'changes/3-task.md').write_text('- Tarefa.\n')
+        self.commit()
+        self.sha = self.git('rev-parse', 'HEAD').strip()
+
+    def test_task_merge_with_pending_notes_is_not_a_release(self):
+        self.run_publish()
+        old = self.tag
+        self.task_merge()
+        self.assertEqual(self.run_publish(), 'NOT_A_RELEASE v0.2.0')
+        self.assertEqual(self.tag, old)
+        self.assertEqual(len(self.writes), 2)
+
+    def test_pending_notes_never_tag_a_missing_release(self):
+        # A release commit whose run never published must not be tagged at a later task commit.
+        self.task_merge()
+        self.assertEqual(self.run_publish(), 'NOT_A_RELEASE v0.2.0')
+        self.assertIsNone(self.tag)
+        self.assertEqual(self.writes, [])
+
+    def test_task_merge_still_requires_successful_main_ci(self):
+        self.task_merge()
+        self.conclusion = 'failure'
+        with self.assertRaises(ValueError):
+            self.run_publish()
+
     def test_same_version_with_new_code_never_retags(self):
         self.run_publish()
         (self.root / 'backend.py').write_text('x = 1\n')

@@ -8,7 +8,7 @@ import re
 import subprocess
 import urllib.error
 import urllib.request
-from release_version import check, git, read_metadata, prose_only
+from release_version import check, git, pending_notes, read_metadata, prose_only
 
 
 class ApiError(Exception): pass
@@ -72,6 +72,9 @@ def publish(root, repo, run_id, api_call=api):
     if jobs.get('total_count',101)>100 or len(required)!=1 or required[0].get('conclusion')!='success':raise ValueError('missing successful Required CI')
     version=check(root,None,'HEAD');_,sections,_=read_metadata(root,'HEAD')
     notes=sections[version][1];tag='v'+version;prerelease=version.startswith('0.')
+    # Task merges leave notes in changes/ for the next release cut: nothing to publish, and
+    # never a tag on a commit that carries unreleased work (even if the release run was missed).
+    if pending_notes(root,'HEAD'):return 'NOT_A_RELEASE '+tag
     target=tag_commit(api_call,prefix,tag)
     existing=api_call('GET',prefix+'/releases/tags/'+tag,missing=True)
     if target and target!=sha:

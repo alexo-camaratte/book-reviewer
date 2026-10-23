@@ -38,9 +38,9 @@ class VersionTests(unittest.TestCase):
         (self.root / 'frontend/package.json').write_text(json.dumps({'name': 'f', 'version': package or version}) + '\n')
         (self.root / 'pyproject.toml').write_text(PYPROJECT.format(v=pyproject or version))
 
-    def add_note(self):
-        p = self.root / 'CHANGELOG.md'
-        p.write_text(p.read_text().replace('## [Unreleased]\n', '## [Unreleased]\n\n### Corrigido\n\n- Corrige comportamento.\n', 1))
+    def add_note(self, name='1-fix.md', text='### Corrigido\n- Corrige comportamento.\n'):
+        (self.root / 'changes').mkdir(exist_ok=True)
+        (self.root / 'changes' / name).write_text(text)
 
     def test_cut_updates_every_source_and_validates(self):
         self.add_note()
@@ -56,18 +56,79 @@ class VersionTests(unittest.TestCase):
         self.add_note()
         self.assertEqual(mod.cut(self.root, 'minor'), '0.3.0')
 
-    def test_code_without_version_is_rejected(self):
+    def test_code_without_note_is_rejected(self):
         (self.root / 'backend.py').write_text('x = 1\n')
         self.commit()
         with self.assertRaises(ValueError):
             mod.check(self.root, self.base, 'HEAD')
+
+    def test_task_with_note_needs_no_version(self):
+        (self.root / 'backend.py').write_text('x = 1\n')
+        self.add_note('3-task.md')
+        self.commit()
+        self.assertEqual(mod.check(self.root, self.base, 'HEAD'), '0.2.0')
+        self.assertEqual(mod.pending_notes(self.root, 'HEAD'), ['changes/3-task.md'])
+
+    def test_task_cannot_edit_changelog_or_delete_notes(self):
+        self.add_note('3-task.md')
+        p = self.root / 'CHANGELOG.md'
+        p.write_text(p.read_text().replace('- Baseline.', '- Baseline.\n- Extra.'))
+        self.commit()
+        with self.assertRaises(ValueError):
+            mod.check(self.root, self.base, 'HEAD')
+        self.setUp()
+        self.add_note('3-task.md')
+        self.commit()
+        task = self.git('rev-parse', 'HEAD').strip()
+        (self.root / 'changes/3-task.md').unlink()
+        (self.root / 'backend.py').write_text('x = 1\n')
+        self.add_note('4-other.md')
+        self.commit()
+        with self.assertRaises(ValueError):
+            mod.check(self.root, task, 'HEAD')
+
+    def test_invalid_notes_are_rejected(self):
+        for name, text in [('1_Fix.md', '- A.\n'), ('fix.md', '- A.\n'), ('1-fix.txt', '- A.\n'),
+                           ('1-fix.md', ''), ('1-fix.md', 'Texto solto.\n'), ('1-fix.md', '### Outro\n- A.\n'),
+                           ('1-fix.md', '  continuação sem item\n'), ('1-fix.md', '## [9.9.9] - 2026-01-01\n- A.\n')]:
+            with self.subTest(name=name, text=text):
+                self.setUp()
+                (self.root / 'backend.py').write_text('x = 1\n')
+                self.add_note(name, text)
+                self.commit()
+                with self.assertRaises(ValueError):
+                    mod.check(self.root, self.base, 'HEAD')
+
+    def test_cut_groups_notes_by_category_in_issue_order_and_deletes_them(self):
+        self.add_note('10-b.md', '### Corrigido\n- Dez.\n  Continua.\n')
+        self.add_note('9-a.md', '- Sem categoria.\n\n### Corrigido\n- Nove.\n\n### Adicionado\n- Novo.\n')
+        (self.root / 'changes/README.md').write_text('# Notas\n')
+        self.commit()
+        task = self.git('rev-parse', 'HEAD').strip()
+        self.assertEqual(mod.cut(self.root, 'minor'), '0.3.0')
+        self.assertEqual(sorted(p.name for p in (self.root / 'changes').iterdir()), ['README.md'])
+        section = mod.read_metadata(self.root)[1]['0.3.0'][1]
+        self.assertEqual(section, '- Sem categoria.\n\n### Adicionado\n\n- Novo.\n\n### Corrigido\n\n- Nove.\n- Dez.\n  Continua.')
+        self.commit()
+        self.assertEqual(mod.check(self.root, task, 'HEAD'), '0.3.0')
+
+    def test_release_must_consume_every_note(self):
+        self.add_note('3-task.md')
+        self.commit()
+        task = self.git('rev-parse', 'HEAD').strip()
+        self.add_note('4-late.md')
+        mod.cut(self.root, 'patch')
+        self.add_note('4-late.md')
+        self.commit()
+        with self.assertRaises(ValueError):
+            mod.check(self.root, task, 'HEAD')
 
     def test_readme_only_needs_no_release(self):
         (self.root / 'README.md').write_text('clarification')
         self.commit()
         self.assertEqual(mod.check(self.root, self.base, 'HEAD'), '0.2.0')
 
-    def test_contracts_and_design_require_bump(self):
+    def test_contracts_and_design_require_note(self):
         for name in ['AGENTS.md', 'RUNBOOK.md', 'design/tokens.json']:
             p = self.root / name
             p.parent.mkdir(parents=True, exist_ok=True)
