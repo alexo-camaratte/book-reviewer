@@ -47,7 +47,7 @@ class FastCheckTest(unittest.TestCase):
     def test_worktrees_live_in_an_ignored_folder(self):
         # Only the committed .gitignore counts: a personal excludesFile or .git/info/exclude must not make this pass.
         with tempfile.TemporaryDirectory() as tmp:
-            subprocess.run(['git', 'init', '-q', tmp], check=True, timeout=30)
+            subprocess.run(['git', 'init', '-q', '--template=', tmp], check=True, timeout=30)
             shutil.copy(ROOT / '.gitignore', Path(tmp) / '.gitignore')
             ignored = lambda path: subprocess.run(['git', '-c', 'core.excludesFile=/dev/null', 'check-ignore', '-q', '--no-index', path],
                                                   cwd=tmp, timeout=30).returncode == 0
