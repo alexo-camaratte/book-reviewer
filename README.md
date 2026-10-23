@@ -64,7 +64,7 @@ A revisão é objetiva e conservadora. A segunda passagem da IA não é uma cert
 
 ```bash
 ./scripts/test.sh
-./scripts/ci.sh
+./scripts/fast-check.sh
 ./scripts/jail.sh ./scripts/test.sh
 ```
 

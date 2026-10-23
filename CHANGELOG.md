@@ -5,6 +5,12 @@ aplicativo inteiro (interface e backend). Fluxo em [RELEASES.md](RELEASES.md).
 
 ## [Unreleased]
 
+## [0.23.4] - 2026-10-23
+
+### Alterado
+
+- `scripts/fast-check.sh` é o núcleo rápido do agente e do `Required CI` (compilação, testes Python e de frontend, lint e build); `scripts/ci.sh` vira atalho para ele. Fora do CI, os testes de frontend rodam com no máximo 2 workers e o build espera um lock da máquina (`scripts/share-machine.sh`), para sessões de vários projetos não disputarem CPU.
+
 ## [0.23.3] - 2026-10-21
 
 ### Corrigido
