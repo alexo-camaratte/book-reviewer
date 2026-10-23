@@ -31,6 +31,9 @@ class FastCheckTest(unittest.TestCase):
         self.assertIn('\n  pull_request:\n', trigger)
         self.assertNotIn('[push, pull_request]', workflow)
         self.assertIn('cancel-in-progress: ${{ github.event_name == \'pull_request\' }}', workflow)
+        # Outside a PR the group must be unique per commit: a shared main group would let a
+        # third merge cancel the pending run of the second, and its release would never publish.
+        self.assertIn('group: ci-${{ github.event.pull_request.number || github.sha }}', workflow)
 
     def test_share_machine_contract(self):
         result = subprocess.run(['bash', str(SCRIPTS / 'test-share-machine.sh')], cwd=ROOT,

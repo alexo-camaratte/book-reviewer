@@ -9,9 +9,10 @@ on:
 permissions:
   contents: read
 
-# A new push to the same PR cancels the stale run; main runs always finish.
+# A new push to the same PR cancels the stale run. Main runs get one group per commit,
+# so a later merge never cancels a pending run (and its release).
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
+  group: ci-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
