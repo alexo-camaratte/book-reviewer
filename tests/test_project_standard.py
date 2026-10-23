@@ -1,6 +1,7 @@
 """Project-standard contracts: fast-check entry point, machine sharing and CI wiring."""
 import json
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import tempfile
@@ -8,6 +9,25 @@ import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPTS = ROOT / 'scripts'
+
+
+def matches(rule, command):
+    """Claude Code Bash rule semantics: a trailing ':*' means ' *' (or the bare command), '*' matches anything."""
+    if not (rule.startswith('Bash(') and rule.endswith(')')):
+        return False
+    pattern = rule[5:-1]
+    if pattern.endswith(':*'):
+        if command == pattern[:-2]:
+            return True
+        pattern = pattern[:-2] + ' *'
+    return re.fullmatch('.*'.join(map(re.escape, pattern.split('*'))), command, re.S) is not None
+
+
+def decide(perms, command):
+    for verdict in ('deny', 'ask', 'allow'):
+        if any(matches(rule, command) for rule in perms[verdict]):
+            return verdict
+    return 'prompt'
 
 
 class FastCheckTest(unittest.TestCase):
@@ -61,21 +81,40 @@ class FastCheckTest(unittest.TestCase):
         self.assertEqual(settings['attribution']['commit'], '')
         self.assertEqual(settings['attribution']['pr'], '')
         self.assertIs(settings['includeCoAuthoredBy'], False)
+        self.assertNotIn('enabledPlugins', settings, 'skill installation stays in the personal environment')
         perms = settings['permissions']
-        allow, ask, deny = set(perms['allow']), set(perms['ask']), set(perms['deny'])
-        self.assertFalse(allow & ask or allow & deny or ask & deny, 'a rule lives in one list only')
-        for rule in ('Bash(./scripts/fast-check.sh:*)', 'Bash(gh pr create:*)', 'Bash(gh pr merge:*)',
-                     'Bash(git push origin chore/:*)', 'Bash(git worktree remove:*)'):
-            self.assertIn(rule, allow)
-        for rule in ('Bash(rm:*)', 'Bash(git branch -D:*)', 'Bash(python3 scripts/release_version.py cut:*)',
-                     'Bash(gh pr merge * --merge*)'):
-            self.assertIn(rule, ask)
-        for rule in ('Bash(git push --force:*)', 'Bash(git push * --force*)', 'Bash(git push origin main:*)',
-                     'Bash(git reset --hard:*)', 'Bash(rm -rf:*)', 'Bash(gh pr merge * --admin*)',
-                     'Bash(git worktree remove * --f*)', 'Read(./**/.env*)', 'Edit(./.books/**)', 'Write(./.books/**)'):
-            self.assertIn(rule, deny)
-        # Broad pushes would bypass the narrow task-branch allows.
-        self.assertFalse({'Bash(git push:*)', 'Bash(git:*)', 'Bash(gh:*)'} & allow)
+        self.assertFalse(set(perms['allow']) & set(perms['ask']) or set(perms['allow']) & set(perms['deny'])
+                         or set(perms['ask']) & set(perms['deny']), 'a rule lives in one list only')
+        # Real commands, decided with the documented semantics, not by string presence.
+        cases = {
+            'allow': ['./scripts/fast-check.sh', 'python3 -m unittest discover -s tests', 'gh pr view 14 --repo o/r',
+                      'git fetch --prune origin', 'git push -u origin chore/6-claude-settings', 'git push origin fix/12-x',
+                      'git -C /p/.claude/worktrees/chore-6 push -u origin chore/6-x',
+                      'git worktree add -b chore/6-x .claude/worktrees/chore-6 origin/main',
+                      'git worktree remove .claude/worktrees/chore-6', 'pnpm --dir frontend build'],
+            'ask': ['gh pr merge 14 --repo o/r --squash', 'gh pr create --body-file body.md', 'gh issue comment 6 --body-file x.md',
+                    'rm notes.txt', 'git branch -D chore/6-x', './scripts/jail.sh ./scripts/test.sh',
+                    './scripts/jail.sh git -C /workspace status', 'python3 scripts/release_version.py cut --bump patch',
+                    'git push -u origin chore/6-x other'],
+            'deny': ['git push -u origin chore/x:main', 'git push origin chore/x +HEAD:y', 'git push -u origin chore/x:refs/tags/v9',
+                     'git push --force origin chore/x', 'git push -u origin chore/x --force-with-lease', 'git push origin chore/x main',
+                     'git push origin --delete chore/x', 'git push origin chore/x --tags',
+                     'git -C wt push --force origin chore/x', 'git -C wt push -u origin chore/x:main', 'git -C wt reset --hard',
+                     'git -C wt clean -fdx', 'git clean -fdx', 'git stash', 'git diff --output=out.txt', 'git diff --no-index /dev/null x',
+                     'git fetch --upload-pack=evil .', 'git add -f .', 'git -C wt add --force .', 'bandit -r backend -o out.json',
+                     'gh pr merge 14 --squash --admin', 'rm -rf build', 'git worktree remove --force .claude/worktrees/x',
+                     'git -C wt worktree remove -f x', './scripts/jail.sh rm -rf /workspace/.books', 'cat .env',
+                     'gh issue comment 6 --body-file /home/u/repo/.env', 'gh pr create --body-file=.books/a/b.json',
+                     'sudo true', 'gh secret list'],
+        }
+        for expected, commands in cases.items():
+            for command in commands:
+                with self.subTest(command=command):
+                    self.assertEqual(decide(perms, command), expected)
+        # Anything else falls back to the default prompt, e.g. a push of main or a branch -d.
+        for command in ('git push origin main', 'git switch -c x', 'git branch -d x', 'gh api repos/o/r'):
+            with self.subTest(command=command):
+                self.assertIn(decide(perms, command), ('prompt', 'deny'))
 
     def test_share_machine_contract(self):
         result = subprocess.run(['bash', str(SCRIPTS / 'test-share-machine.sh')], cwd=ROOT,
