@@ -35,6 +35,8 @@ Instruções de agentes, runbooks e `design/` são contratos: mudança exige not
    ```
 
    `cut` junta todas as notas na nova seção do `CHANGELOG.md`, atualiza `VERSION` e os espelhos e apaga as notas; não commita nem publica.
+
+   O PR de release só muda `VERSION`, espelhos e `CHANGELOG.md` e apaga notas; código vai em PR de tarefa. Ele precisa estar atualizado com a `main` (o check recusa o contrário): uma nota mergeada depois do corte ficaria pendente e o CI da `main` falharia sem publicar. Atualize a branch (rode o `cut` de novo se entrou nota) logo antes do merge.
 3. O CI (`Required CI`) roda uma vez por PR (branch de tarefa não dispara run de push; o push só roda na `main`, que o `Publish version` espera) e valida escopo do PR, notas, fontes consistentes, histórico preservado e um único incremento sobre a base; o ruleset da `main` exige esse check verde.
 4. Após o merge autorizado (squash) do PR de release e o CI verde na `main`, confira a release em https://github.com/alexo-camaratte/book-reviewer/releases. Falha de publicação é pendência, não sucesso; reconcilie tag e release antes de repetir. Um commit com notas pendentes nunca recebe tag: se o run da release falhar, corrija antes de novos merges de tarefa ou corte uma nova versão.
 

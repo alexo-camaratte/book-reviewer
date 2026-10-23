@@ -106,7 +106,7 @@ class CheckPrScopeTest(unittest.TestCase):
 
     def test_sensitive_paths_require_a_security_review_line(self):
         for path in ('.github/workflows/ci.yml', 'scripts/fast-check.sh', 'frontend/package.json', '.claude/settings.json',
-                     'AGENTS.md', 'CLAUDE.md', 'bin', '.claude'):
+                     'AGENTS.md', 'CLAUDE.md', 'RELEASES.md', 'bin', '.claude'):
             with self.subTest(path=path):
                 self.setUp()
                 files = {path: 'x\n', 'changes/12-a.md': '- A.\n'}
@@ -132,6 +132,26 @@ class CheckPrScopeTest(unittest.TestCase):
     def test_parallel_note_merged_into_main_is_not_this_prs_change(self):
         result = self.scope({'changes/12-a.md': '- A.\n'}, main_after={'changes/600-b.md': '- B.\n'})
         self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_every_closing_keyword_form_is_refused(self):
+        for body in ('Refs #12\nCloses: #12', 'Refs #12\nFixes alexo-camaratte/book-reviewer#12',
+                     'Refs #12\nResolves https://github.com/alexo-camaratte/book-reviewer/issues/12', 'Refs #12\nclose #3'):
+            with self.subTest(body=body):
+                self.setUp()
+                self.assertRefused(self.scope({'changes/12-a.md': '- A.\n'}, body=body), 'closing keyword')
+
+    def test_release_pr_must_be_up_to_date_with_main(self):
+        # A note merged into main after the release branched would stay pending on main.
+        bump = {'VERSION': '0.1.5\n', 'CHANGELOG.md': LOG.replace('## [0.1.4]', '## [0.1.5] - 2026-10-22\n\n- Y.\n\n## [0.1.4]')}
+        result = self.scope(bump, ['changes/7-a.md'], branch='chore/20-release', notes=['7-a.md'], body=RELEASE_BODY,
+                            main_after={'changes/11-late.md': '- Late.\n'})
+        self.assertRefused(result, 'up to date')
+
+    def test_release_pr_carries_only_release_files(self):
+        bump = {'VERSION': '0.1.5\n', 'CHANGELOG.md': LOG.replace('## [0.1.4]', '## [0.1.5] - 2026-10-22\n\n- Y.\n\n## [0.1.4]')}
+        result = self.scope({**bump, 'backend/a.py': 'a\n'}, ['changes/7-a.md'], branch='chore/20-release', notes=['7-a.md'],
+                            body=RELEASE_BODY)
+        self.assertRefused(result, 'backend/a.py')
 
     def test_refs_closing_keyword_and_env_files(self):
         self.assertRefused(self.scope({'changes/12-a.md': '- A.\n'}, body='Refs #13'))

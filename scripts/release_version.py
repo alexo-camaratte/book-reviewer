@@ -87,11 +87,16 @@ def read_metadata(root, revision=None):
 def pending_notes(root, revision=None):
     """Note paths waiting for the next release, sorted by issue number."""
     if revision:
-        out = git(root, 'ls-tree', '-r', '--name-only', '-z', resolve(root, revision), NOTES_DIR + '/')
-        paths = [p for p in out.split('\0') if p]
+        out = git(root, 'ls-tree', '-r', '-z', resolve(root, revision), NOTES_DIR + '/')
+        entries = [line.split('\t', 1) for line in out.split('\0') if line]
+        if any(meta.split()[0] not in ('100644', '100755') for meta, _ in entries):
+            raise ValueError('notes must be regular files')
+        paths = [path for _, path in entries]
     else:
         folder = root / NOTES_DIR
-        paths = [f'{NOTES_DIR}/{p.relative_to(folder).as_posix()}' for p in folder.rglob('*') if not p.is_dir()] if folder.is_dir() else []
+        if folder.is_symlink() or (folder.exists() and folder.resolve() != folder): raise ValueError('changes/ must be a regular file tree')
+        paths = [f'{NOTES_DIR}/{p.relative_to(folder).as_posix()}' for p in folder.rglob('*') if p.is_symlink() or not p.is_dir()] if folder.is_dir() else []
+        if any((root / p).is_symlink() for p in paths): raise ValueError('notes must be regular files')
     paths = [p for p in paths if p != NOTES_README]
     for path in paths:
         if not NOTE.fullmatch(path): raise ValueError('invalid note name: '+path)

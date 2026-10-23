@@ -17,7 +17,11 @@ NOTES_README = 'changes/README.md'
 SECURITY_REVIEW = re.compile(r'^Security-Review:[ \t]*\S', re.M)
 # Paths that run code in CI or steer agents: the PR runs its own CI and gates (accepted risk).
 REVIEWED_DIRS = ('.github/', 'scripts/', 'bin/', '.claude/', '.codex/')
-REVIEWED_FILES = ('frontend/package.json', 'AGENTS.md', 'CLAUDE.md')
+REVIEWED_FILES = ('frontend/package.json', 'AGENTS.md', 'CLAUDE.md', 'RELEASES.md')
+# What a release cut may change, besides deleting notes.
+RELEASE_FILES = ('VERSION', 'frontend/package.json', 'pyproject.toml', 'CHANGELOG.md')
+# Every form GitHub accepts: 'Closes #6', 'Closes: #6', 'Fixes owner/repo#6', 'Resolves <issue URL>'.
+CLOSING = re.compile(r'(?i)\b(close[sd]?|fix(e[sd])?|resolve[sd]?)\b:?\s+(#\d+|[\w.-]+/[\w.-]+#\d+|https?://\S+/issues/\d+)')
 
 
 def merge_base(base, head):
@@ -57,13 +61,13 @@ def check(event):
     match = re.fullmatch(r'(feature|fix|chore|docs|test|refactor)/(\d+)-[a-z0-9-]+', branch)
     if not match or not re.search(rf'\bRefs #{match[2]}\b', body):
         raise ValueError('Task branch must identify an issue (<type>/<N>-<slug>) and PR body must contain Refs #N')
-    if re.search(r'(?i)\b(close[sd]?|fix(e[sd])?|resolve[sd]?)\s+#\d+', body):
+    if CLOSING.search(body):
         raise ValueError('Use Refs #N, never a closing keyword: the issue closes after acceptance')
     issue = match[2]
     base, head = pr['base']['sha'], pr['head']['sha']
     if not all(re.fullmatch(r'[0-9a-f]{40}', sha) for sha in (base, head)):
         raise ValueError('Invalid commit SHA')
-    base = merge_base(base, head)
+    tip, base = base, merge_base(base, head)
     subprocess.run(['git', 'diff', '--check', base, head], check=True, timeout=30)
     changes = diff_status(base, head)
     paths = [path for _, path in changes]
@@ -80,6 +84,10 @@ def check(event):
         # Release cut: joins the notes into CHANGELOG.md and deletes them.
         if semver(version(head)) <= semver(version(base)):
             raise ValueError(f'Release PR must raise VERSION: {version(base)} -> {version(head)}')
+        if tip != base:
+            raise ValueError('Release PR must be up to date with main: update the branch right before merging')
+        if extra := [p for status, p in changes if p not in RELEASE_FILES and (status, p) not in notes]:
+            raise ValueError(f'Release PR only cuts the version; move these to a task PR: {", ".join(extra)}')
         if any(status != 'D' for status, _ in notes):
             raise ValueError('Release PR only deletes notes from changes/')
         if left := pending_notes(head):

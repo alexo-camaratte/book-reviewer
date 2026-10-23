@@ -95,9 +95,20 @@ class VersionTests(unittest.TestCase):
                 self.setUp()
                 (self.root / 'backend.py').write_text('x = 1\n')
                 self.add_note(name, text)
+                self.add_note('2-valid.md', '- Válida.\n')
                 self.commit()
-                with self.assertRaises(ValueError):
+                with self.assertRaisesRegex(ValueError, 'invalid note|empty note|continuation'):
                     mod.check(self.root, self.base, 'HEAD')
+
+    def test_symlinked_notes_are_rejected(self):
+        (self.root / 'changes').mkdir()
+        (self.root / 'changes/12-x.md').symlink_to('- A.')
+        (self.root / 'backend.py').write_text('x = 1\n')
+        self.commit()
+        with self.assertRaisesRegex(ValueError, 'regular file'):
+            mod.check(self.root, self.base, 'HEAD')
+        with self.assertRaisesRegex(ValueError, 'regular file'):
+            mod.pending_notes(self.root)
 
     def test_cut_groups_notes_by_category_in_issue_order_and_deletes_them(self):
         self.add_note('10-b.md', '### Corrigido\n- Dez.\n  Continua.\n')
