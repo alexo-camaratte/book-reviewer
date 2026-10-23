@@ -22,6 +22,16 @@ class FastCheckTest(unittest.TestCase):
         self.assertIn('heavy pnpm --dir frontend build', text, 'the build queues on the machine lock')
         self.assertIn('TEST_WORKER_ARGS', text, 'frontend tests use the local worker cap')
 
+    def test_ci_runs_once_per_pull_request(self):
+        workflow = (ROOT / '.github/workflows/ci.yml').read_text()
+        trigger = workflow.split('\non:', 1)[1].split('\njobs:', 1)[0]
+        # A branch with an open PR gets only the pull_request run; push runs only on main,
+        # where Publish version needs it.
+        self.assertIn('\n  push:\n    branches: [main]\n', trigger)
+        self.assertIn('\n  pull_request:\n', trigger)
+        self.assertNotIn('[push, pull_request]', workflow)
+        self.assertIn('cancel-in-progress: ${{ github.event_name == \'pull_request\' }}', workflow)
+
     def test_share_machine_contract(self):
         result = subprocess.run(['bash', str(SCRIPTS / 'test-share-machine.sh')], cwd=ROOT,
                                 capture_output=True, text=True, timeout=60)
