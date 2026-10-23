@@ -20,7 +20,7 @@ Jev fornece julgamentos, não gera traduções. Avaliação de qualidade e limia
 - Planeje mudanças estruturais e registre evidências em REFACTOR.md quando pertinente.
 - Para comportamento novo/corrigido, escreva primeiro a prova de regressão; mantenha testes do núcleo. Testes de funcionalidades explicitamente aposentadas podem ser removidos junto com elas.
 - Use scripts/jail.sh quando viável para validação isolada. Não copie credenciais para containers.
-- Gates: scripts/ci.sh e Bandit no backend. UI deve ter smoke isolado e inspeção visual proporcionais.
+- Gates: `scripts/fast-check.sh` (núcleo rápido; `scripts/ci.sh` é atalho) e Bandit no backend. O `fast-check` limita os workers de teste e põe o build numa fila da máquina (`scripts/share-machine.sh`). UI deve ter smoke isolado e inspeção visual proporcionais.
 - README, arquitetura, operação, tarefas e changelog devem refletir a mesma revisão.
 - Commits Conventional Commits após verificação; push, merge, deploy e publicação só com autorização específica.
 - Toda mudança de comportamento, configuração, tooling, contrato ou `design/` prepara uma versão e a nota no CHANGELOG no mesmo commit, conforme [RELEASES.md](RELEASES.md). A publicação da tag e da release após CI verde na `main` é automática e foi autorizada em 07/10/2026; ela não autoriza merge. Confira a release antes de relatar conclusão.

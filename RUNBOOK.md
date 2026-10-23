@@ -40,7 +40,7 @@ Testes e instalação pública usam documentos fictícios, sem dados pessoais.
 ## Verificar
 
 ```bash
-./scripts/ci.sh
+./scripts/fast-check.sh
 ```
 
-CI verifica Python, testes unitários/HTTP, lint e build. Bandit complementa os gates. CI não publica nem processa manuscritos reais.
+`fast-check.sh` (o mesmo do CI; `ci.sh` é atalho) verifica Python, testes unitários/HTTP, lint e build. Fora do CI, limita os workers de teste a 2 (`SHARE_WORKERS`) e espera o lock `~/.cache/gabriel-heavy.lock` antes do build, para não disputar a máquina com outros projetos. Bandit complementa os gates. CI não publica nem processa manuscritos reais.
