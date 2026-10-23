@@ -55,6 +55,26 @@ class DependencyAuditTest(unittest.TestCase):
             with self.subTest(code=code, out=out):
                 self.assertEqual(mod.classify_pip(code, out, '')[0], 'failed')
 
+    def test_skipped_backend_dependency_is_not_clean(self):
+        skipped = json.dumps({'dependencies': [{'name': 'x', 'skip_reason': 'not on PyPI'}], 'fixes': []})
+        self.assertEqual(mod.classify_pip(0, skipped, '')[0], 'failed')
+
+    def test_only_the_final_error_decides_an_outage(self):
+        # A retry warning followed by an unrelated crash is a broken audit, not an outage.
+        err = 'WARNING: Retrying after NewConnectionError ECONNRESET\nTraceback (most recent call last):\nRuntimeError: build failed\n'
+        self.assertEqual(mod.classify_pip(1, '', err)[0], 'failed')
+        self.assertEqual(mod.classify_pnpm(1, '', err, 'moderate')[0], 'failed')
+        self.assertEqual(mod.classify_pip(1, '', 'Traceback\nrequests.exceptions.ConnectionError: Max retries exceeded\n')[0], 'unavailable')
+
+    def test_backend_audit_is_strict(self):
+        commands = []
+        def runner(command, timeout):
+            commands.append(command)
+            return 0, pnpm() if command[0] == 'pnpm' else json.dumps({'dependencies': [], 'fixes': []}), ''
+        with contextlib.redirect_stdout(io.StringIO()):
+            mod.main([], runner)
+        self.assertIn('--strict', commands[1])
+
     def run_main(self, frontend, backend, *args):
         def runner(command, timeout):
             return frontend if command[0] == 'pnpm' else backend
@@ -78,7 +98,12 @@ class DependencyAuditTest(unittest.TestCase):
         self.assertEqual(self.run_main(outage, (1, pip('PYSEC-1'), ''), '--soft-unavailable')[0], 1)
         self.assertEqual(self.run_main(outage, (2, 'Traceback', ''), '--soft-unavailable')[0], 1)
         self.assertEqual(self.run_main((1, pnpm(low=1), ''), clean_pip, '--level', 'low')[0], 1)
-        self.assertEqual(self.run_main((0, pnpm(), ''), clean_pip, '--level', 'bogus')[0], 1)
+        for args in (('--level', 'bogus'), ('--level',), ('--level=bogus',), ('--soft',)):
+            with self.subTest(args=args):
+                self.assertEqual(self.run_main((0, pnpm(), ''), clean_pip, *args)[0], 1)
+        self.assertEqual(self.run_main((1, pnpm(moderate=1), ''), clean_pip, '--level', 'high')[0], 0)
+        self.assertEqual(self.run_main((1, pnpm(moderate=1), ''), clean_pip, '--level=high')[0], 0)
+        self.assertEqual(self.run_main((1, pnpm(high=1), ''), clean_pip, '--level=high')[0], 1)
 
     def test_ci_runs_the_audit(self):
         workflow = (SCRIPT.parent.parent / '.github/workflows/ci.yml').read_text()

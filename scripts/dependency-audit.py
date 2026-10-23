@@ -15,6 +15,7 @@ Exit 3: an audit source timed out or answered 5xx/network error and nothing fail
 with --soft-unavailable that outage is a warning and exits 0.
 Writes audit=ok|vulnerable|unavailable|failed to $GITHUB_OUTPUT when set.
 """
+import argparse
 import json
 import os
 from pathlib import Path
@@ -34,6 +35,12 @@ UNAVAILABLE = re.compile(
     r'|HTTPError: 5\d\d|Service Unavailable')
 # Fail closed: a vulnerability or a broken audit blocks; an outage alone only warns.
 SEVERITY = ('ok', 'unavailable', 'failed', 'vulnerable')
+
+
+def outage(out, err):
+    """Only the final error decides: a retry warning before an unrelated crash is a broken audit."""
+    lines = [line for line in (err or out).splitlines() if line.strip()]
+    return bool(lines) and bool(UNAVAILABLE.search(lines[-1]))
 
 
 def run(command, timeout):
@@ -66,7 +73,7 @@ def classify_pnpm(code, out, err, level):
         detail = ', '.join(f'{name} {counts[name]}' for name in reversed(LEVELS))
         blocking = sum(counts[name] for name in LEVELS[LEVELS.index(level):])
         return ('vulnerable' if blocking else 'ok'), detail
-    return ('unavailable' if UNAVAILABLE.search(out + err) else 'failed'), (err.strip() or out.strip())[-500:]
+    return ('unavailable' if outage(out, err) else 'failed'), (err.strip() or out.strip())[-500:]
 
 
 def classify_pip(code, out, err):
@@ -78,14 +85,15 @@ def classify_pip(code, out, err):
     except ValueError:
         report = None
     deps = report.get('dependencies') if isinstance(report, dict) else None
-    if isinstance(deps, list) and all(isinstance(d, dict) and isinstance(d.get('vulns', []), list) for d in deps):
-        found = sorted({(d.get('name'), v.get('id')) for d in deps for v in d.get('vulns', []) if isinstance(v, dict)})
+    # A dependency pip-audit could not audit has skip_reason and no vulns: never clean.
+    if isinstance(deps, list) and all(isinstance(d, dict) and isinstance(d.get('vulns'), list) for d in deps):
+        found = sorted({(d.get('name'), v.get('id')) for d in deps for v in d['vulns'] if isinstance(v, dict)})
         if code == 0 and not found:
             return 'ok', f'{len(deps)} dependencies, 0 vulnerabilities'
         if code == 1 and found:
             return 'vulnerable', 'unrated: ' + ', '.join(f'{name} {vuln}' for name, vuln in found)
         return 'failed', f'exit {code} with {len(found)} findings'
-    return ('unavailable' if UNAVAILABLE.search(out + err) else 'failed'), (err.strip() or out.strip())[-500:]
+    return ('unavailable' if outage(out, err) else 'failed'), (err.strip() or out.strip())[-500:]
 
 
 def backend_requirements():
@@ -97,17 +105,21 @@ def audit(level, timeout, runner=run):
     with tempfile.NamedTemporaryFile('w', suffix='.txt') as requirements:
         requirements.write(''.join(f'{line}\n' for line in backend_requirements()))
         requirements.flush()
-        command = [sys.executable, '-m', 'pip_audit', '--format', 'json', '--progress-spinner', 'off', '-r', requirements.name]
+        command = [sys.executable, '-m', 'pip_audit', '--format', 'json', '--progress-spinner', 'off', '--strict', '-r', requirements.name]
         results['backend'] = classify_pip(*runner(command, timeout))
     return results
 
 
 def main(argv, runner=run):
-    soft = '--soft-unavailable' in argv
-    level = argv[argv.index('--level') + 1] if '--level' in argv[:-1] else 'moderate'
-    if level not in LEVELS:
-        print(f'FAIL  unknown --level {level}', file=sys.stderr)
+    parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
+    parser.add_argument('--soft-unavailable', action='store_true')
+    parser.add_argument('--level', choices=LEVELS, default='moderate')
+    try:
+        args = parser.parse_args(argv)
+    except SystemExit:
+        print('FAIL  invalid arguments', file=sys.stderr)
         return 1
+    soft, level = args.soft_unavailable, args.level
     results = audit(level, int(os.environ.get('AUDIT_TIMEOUT', '120')), runner)
     state = max((s for s, _ in results.values()), key=SEVERITY.index)
     for source, (verdict, detail) in results.items():
