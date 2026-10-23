@@ -9,6 +9,8 @@
   AGENTS.md descreve a criação e a limpeza depois do merge (#6).
 
 ### Segurança
+- `.claude/settings.json` versionado: permissões do agente (pode, pergunta, nunca) e
+  atribuição vazia em commits e PRs (#6).
 - O `Required CI` audita dependências: `pnpm audit --prod` do frontend falha com
   vulnerabilidade moderada ou pior; `pip-audit` do backend falha com qualquer achado,
   pois não informa severidade. Indisponibilidade da fonte do audit só gera aviso (#6).

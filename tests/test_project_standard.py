@@ -1,4 +1,5 @@
 """Project-standard contracts: fast-check entry point, machine sharing and CI wiring."""
+import json
 from pathlib import Path
 import shutil
 import subprocess
@@ -54,6 +55,27 @@ class FastCheckTest(unittest.TestCase):
             self.assertTrue(ignored('.claude/worktrees/fix-12/README.md'), '.claude/worktrees/ must be ignored')
             self.assertFalse(ignored('.claude/settings.json'), 'shared agent settings stay tracked')
         self.assertIn('.claude/worktrees/<tipo>-<N>', (ROOT / 'AGENTS.md').read_text())
+
+    def test_claude_settings_contract(self):
+        settings = json.loads((ROOT / '.claude/settings.json').read_text())
+        self.assertEqual(settings['attribution']['commit'], '')
+        self.assertEqual(settings['attribution']['pr'], '')
+        self.assertIs(settings['includeCoAuthoredBy'], False)
+        perms = settings['permissions']
+        allow, ask, deny = set(perms['allow']), set(perms['ask']), set(perms['deny'])
+        self.assertFalse(allow & ask or allow & deny or ask & deny, 'a rule lives in one list only')
+        for rule in ('Bash(./scripts/fast-check.sh:*)', 'Bash(gh pr create:*)', 'Bash(gh pr merge:*)',
+                     'Bash(git push origin chore/:*)', 'Bash(git worktree remove:*)'):
+            self.assertIn(rule, allow)
+        for rule in ('Bash(rm:*)', 'Bash(git branch -D:*)', 'Bash(python3 scripts/release_version.py cut:*)',
+                     'Bash(gh pr merge * --merge*)'):
+            self.assertIn(rule, ask)
+        for rule in ('Bash(git push --force:*)', 'Bash(git push * --force*)', 'Bash(git push origin main:*)',
+                     'Bash(git reset --hard:*)', 'Bash(rm -rf:*)', 'Bash(gh pr merge * --admin*)',
+                     'Bash(git worktree remove * --f*)', 'Read(./**/.env*)', 'Edit(./.books/**)', 'Write(./.books/**)'):
+            self.assertIn(rule, deny)
+        # Broad pushes would bypass the narrow task-branch allows.
+        self.assertFalse({'Bash(git push:*)', 'Bash(git:*)', 'Bash(gh:*)'} & allow)
 
     def test_share_machine_contract(self):
         result = subprocess.run(['bash', str(SCRIPTS / 'test-share-machine.sh')], cwd=ROOT,
