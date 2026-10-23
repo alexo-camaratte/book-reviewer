@@ -82,20 +82,20 @@ class FastCheckTest(unittest.TestCase):
         self.assertEqual(settings['attribution']['pr'], '')
         self.assertIs(settings['includeCoAuthoredBy'], False)
         self.assertNotIn('enabledPlugins', settings, 'skill installation stays in the personal environment')
+        self.assertNotIn('extraKnownMarketplaces', settings)
         perms = settings['permissions']
         self.assertFalse(set(perms['allow']) & set(perms['ask']) or set(perms['allow']) & set(perms['deny'])
                          or set(perms['ask']) & set(perms['deny']), 'a rule lives in one list only')
         # Real commands, decided with the documented semantics, not by string presence.
         cases = {
             'allow': ['./scripts/fast-check.sh', 'python3 -m unittest discover -s tests', 'gh pr view 14 --repo o/r',
-                      'git fetch --prune origin', 'git push -u origin chore/6-claude-settings', 'git push origin fix/12-x',
-                      'git -C /p/.claude/worktrees/chore-6 push -u origin chore/6-x',
+                      'git fetch --prune origin',
                       'git worktree add -b chore/6-x .claude/worktrees/chore-6 origin/main',
                       'git worktree remove .claude/worktrees/chore-6', 'pnpm --dir frontend build'],
             'ask': ['gh pr merge 14 --repo o/r --squash', 'gh pr create --body-file body.md', 'gh issue comment 6 --body-file x.md',
                     'rm notes.txt', 'git branch -D chore/6-x', './scripts/jail.sh ./scripts/test.sh',
                     './scripts/jail.sh git -C /workspace status', 'python3 scripts/release_version.py cut --bump patch',
-                    'git push -u origin chore/6-x other'],
+                    ],
             'deny': ['git push -u origin chore/x:main', 'git push origin chore/x +HEAD:y', 'git push -u origin chore/x:refs/tags/v9',
                      'git push --force origin chore/x', 'git push -u origin chore/x --force-with-lease', 'git push origin chore/x main',
                      'git push origin --delete chore/x', 'git push origin chore/x --tags',
@@ -105,16 +105,24 @@ class FastCheckTest(unittest.TestCase):
                      'gh pr merge 14 --squash --admin', 'rm -rf build', 'git worktree remove --force .claude/worktrees/x',
                      'git -C wt worktree remove -f x', './scripts/jail.sh rm -rf /workspace/.books', 'cat .env',
                      'gh issue comment 6 --body-file /home/u/repo/.env', 'gh pr create --body-file=.books/a/b.json',
-                     'sudo true', 'gh secret list'],
+                     'sudo true', 'gh secret list',
+                     'git -c core.fsmonitor=evil status',
+                     'git worktree add -b x .claude/worktrees/../../x origin/main', 'git worktree remove .claude/worktrees/../../x',
+                     'git worktree add -b x -f .claude/worktrees/x origin/main'],
         }
         for expected, commands in cases.items():
             for command in commands:
                 with self.subTest(command=command):
                     self.assertEqual(decide(perms, command), expected)
         # Anything else falls back to the default prompt, e.g. a push of main or a branch -d.
-        for command in ('git push origin main', 'git switch -c x', 'git branch -d x', 'gh api repos/o/r'):
+        # Pushes always ask (AGENTS.md: push only with specific authorization), including refspecs to other branches.
+        for command in ('git push origin main', 'git switch -c x', 'git branch -d x', 'gh api repos/o/r',
+                        'git push -u origin chore/6-x', 'git push origin chore/6-x:other', 'git -C wt push -u origin chore/6-x',
+                        'git add changes/6-fix-thing.md', 'python3 -m unittest discover -s /tmp/x',
+                        'git -C wt -c remote.origin.receivepack=evil push origin chore/6-x'):
             with self.subTest(command=command):
                 self.assertIn(decide(perms, command), ('prompt', 'deny'))
+        self.assertEqual(decide(perms, 'git add changes/6-fix-thing.md'), 'prompt', 'a slug with -f is not a force flag')
 
     def test_share_machine_contract(self):
         result = subprocess.run(['bash', str(SCRIPTS / 'test-share-machine.sh')], cwd=ROOT,
