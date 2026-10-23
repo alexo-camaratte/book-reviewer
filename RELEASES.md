@@ -6,7 +6,8 @@ Modelo adaptado do Xlondz. Em 07/10/2026 Gabriel pediu releases automáticas nes
 
 - `VERSION`: versão canônica do aplicativo, `MAJOR.MINOR.PATCH`.
 - `frontend/package.json` e `pyproject.toml`: espelhos validados.
-- `CHANGELOG.md`: notas em português. `[Unreleased]` acumula o trabalho; cada versão tem data UTC. Notas publicadas não são reescritas; correções entram em nova versão.
+- `changes/<N>-<slug>.md`: nota de cada PR de tarefa, até a próxima release ([changes/README.md](changes/README.md)).
+- `CHANGELOG.md`: notas publicadas, em português, com data UTC. `[Unreleased]` fica vazio; muda só no PR de release. Notas publicadas não são reescritas; correções entram em nova versão.
 - Tag `vX.Y.Z` e GitHub Release: commit exato aprovado pelo CI, notas, SHA e link do run. Tags e releases nunca são movidas nem sobrescritas.
 
 A primeira versão formal é `0.2.0`, publicada como pré-release (todas as `0.x` são pré-release).
@@ -19,22 +20,24 @@ A primeira versão formal é `0.2.0`, publicada como pré-release (todas as `0.x
 | Funcionalidade compatível | minor |
 | Quebra de contrato em 0.x | minor, com seção de incompatibilidade |
 | Quebra de contrato após 1.0.0 | major |
-| Somente README.md | sem nova versão |
+| Somente README.md | sem nota no contrato de versão |
 
-Instruções de agentes, runbooks e `design/` são contratos: mudança exige versão.
+Instruções de agentes, runbooks e `design/` são contratos: mudança exige nota.
 
 ## Fluxo
 
-1. Durante o trabalho, escreva as mudanças em `[Unreleased]`.
-2. Antes do último commit da branch, prepare uma única versão e valide:
+1. PR de tarefa: branch `<tipo>/<N>-<slug>` a partir de `origin/main`, uma nota `changes/<N>-<slug>.md`, descrição com `Refs #N`. Não toque `CHANGELOG.md` nem a versão. O merge na `main` não publica release (`NOT_A_RELEASE`).
+2. PR de release, quando Gabriel pedir uma versão: escolha o incremento pela tabela acima e rode
 
    ```bash
    python3 scripts/release_version.py cut --bump patch
    python3 scripts/release_version.py check --base origin/main
    ```
 
-   `cut` atualiza `VERSION`, os espelhos e o changelog; não commita nem publica.
-3. Abra o PR para a `main`. O CI (`Required CI`) roda uma vez por PR (branch de tarefa não dispara run de push; o push só roda na `main`, que o `Publish version` espera) e valida fontes consistentes, notas não vazias, histórico preservado e um único incremento sobre a base; o ruleset da `main` exige esse check verde.
-4. Após o merge autorizado (squash) e o CI verde na `main`, confira a release em https://github.com/alexo-camaratte/book-reviewer/releases. Falha de publicação é pendência, não sucesso; reconcilie tag e release antes de repetir.
+   `cut` junta todas as notas na nova seção do `CHANGELOG.md`, atualiza `VERSION` e os espelhos e apaga as notas; não commita nem publica.
+
+   O PR de release só muda `VERSION`, espelhos e `CHANGELOG.md` e apaga notas; código vai em PR de tarefa. Ele precisa estar atualizado com a `main` (o check recusa o contrário): uma nota mergeada depois do corte ficaria pendente e o CI da `main` falharia sem publicar. Atualize a branch (rode o `cut` de novo se entrou nota) logo antes do merge.
+3. O CI (`Required CI`) roda uma vez por PR (branch de tarefa não dispara run de push; o push só roda na `main`, que o `Publish version` espera) e valida escopo do PR, notas, fontes consistentes, histórico preservado e um único incremento sobre a base; o ruleset da `main` exige esse check verde.
+4. Após o merge autorizado (squash) do PR de release e o CI verde na `main`, confira a release em https://github.com/alexo-camaratte/book-reviewer/releases. Falha de publicação é pendência, não sucesso; reconcilie tag e release antes de repetir. Um commit com notas pendentes nunca recebe tag: se o run da release falhar, corrija antes de novos merges de tarefa ou corte uma nova versão.
 
 `scripts/verify-release-workflow.py` fixa o hash do `release.yml` revisado; alterá-lo exige revisão e atualização do hash.

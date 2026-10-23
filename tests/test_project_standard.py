@@ -35,6 +35,13 @@ class FastCheckTest(unittest.TestCase):
         # third merge cancel the pending run of the second, and its release would never publish.
         self.assertIn('group: ci-${{ github.event.pull_request.number || github.sha }}', workflow)
 
+    def test_pr_scope_gate_runs_on_every_pr_event(self):
+        workflow = (ROOT / '.github/workflows/ci.yml').read_text()
+        # Editing the body (Refs #N, Security-Review:) must re-run the gate.
+        self.assertIn('types: [opened, synchronize, reopened, edited]', workflow)
+        self.assertIn("if: github.event_name == 'pull_request'\n        run: python3 scripts/check-pr-scope.py", workflow)
+        self.assertTrue((ROOT / 'changes/README.md').is_file())
+
     def test_share_machine_contract(self):
         result = subprocess.run(['bash', str(SCRIPTS / 'test-share-machine.sh')], cwd=ROOT,
                                 capture_output=True, text=True, timeout=60)
